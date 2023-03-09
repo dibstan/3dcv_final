@@ -90,7 +90,7 @@ class UNet(nn.Module):
 
     def forward(self, x):
         skip_cons = []
-        
+        print(1)
         for down in self.downs:
             x = down(x)
             skip_cons.append(x)
@@ -105,6 +105,7 @@ class UNet(nn.Module):
 
         x = self.final_conv(x)
         x = nn.Sigmoid()(x)
+        
         return x
     
 
@@ -113,19 +114,19 @@ def train(model, dataloader, optimizer, criterion, device):
     model.train()
     for batch_idx, (data, target) in enumerate(dataloader):
         #get data and feet through model
-        data, target = data.to(device), target.to(device)
+        data, target = data[:, :, :128, :128].to(device), target[:128, :128].to(device)
         
         while target.dim() != 4:
             target = torch.unsqueeze(target, dim = 0)
         
         optimizer.zero_grad()
-        output = model(data)
+        output_oh = model(data)
 
         #one-hot encoding for pixel-wise BCE
-        #target_oh = nn.functional.one_hot(target.to(torch.int64), num_classes = 24).transpose(1,4).squeeze(-1).float()
-        #output_oh = nn.functional.one_hot(output.to(torch.int64), num_classes = 24).transpose(1,4).squeeze(-1).float()
+        target_oh = nn.functional.one_hot(target.to(torch.int64), num_classes = 24).transpose(1,4).squeeze(-1).float()
+        
 
-        loss = criterion(output, target)
+        loss = criterion(output_oh, target_oh)
         loss.backward()
         optimizer.step()
 
