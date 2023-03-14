@@ -1,8 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import skimage
 import skimage.io
-import time
 
 def times_divide_by_two(a, b):
     '''
