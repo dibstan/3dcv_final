@@ -60,6 +60,13 @@ def list_rotated_images(image):
         rotated_images.append(image)
     return rotated_images
 
+# Image prep procedure:
+
+# Create list of downscaled images, scaling by factor 2 until smallest image side < windowsize
+# Slice each image version (original and all downscaled versions) into square patches of size windowsize
+# Rotate each patch three times by 90 deg to create four rotated versions of one patch
+# Optional: Mirror each patch
+
 def prepare_image(image, wsize, mirroring=False):
     '''
     Return list of all possible square patches for one input image.
