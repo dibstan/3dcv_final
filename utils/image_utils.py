@@ -58,7 +58,7 @@ def list_rotated_images(image):
     for _ in range(3):
         image = np.rot90(image)
         rotated_images.append(image)
-    return rotated_images)
+    return rotated_images
 
 def prepare_image(image, wsize, mirroring=False):
     '''
