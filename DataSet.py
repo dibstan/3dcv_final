@@ -1,9 +1,7 @@
-import torch
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
 import os
-import tqdm
-import skimage
+from torchvision.io import read_image
+
 
 class ImSegDataSet(Dataset):
     def __init__(self,PathToDataSet,mode):
@@ -11,8 +9,8 @@ class ImSegDataSet(Dataset):
         Constructor of the data set used to train the model
 
         parameters:
-            PathToDataSet:
-            mode:
+            PathToDataSet:     Location of the training data (Folder containing subfolders for images and labels)
+            mode:              How is the data set used (train,validation or test)         
         """
         super().__init__()
 
@@ -24,7 +22,7 @@ class ImSegDataSet(Dataset):
         
         #Store the paths to the files
         self.files_X = [os.path.join(PathToDataSet + f"images/", f) for f in os.listdir(PathToDataSet + f"images/") if os.path.isfile(os.path.join(PathToDataSet + f"images/", f))]
-        self.files_Y = [os.path.join(PathToDataSet + f"images/", f) for f in os.listdir(PathToDataSet + f"labels/") if os.path.isfile(os.path.join(PathToDataSet + f"labels/", f))]
+        self.files_Y = [os.path.join(PathToDataSet + f"labels/", f) for f in os.listdir(PathToDataSet + f"labels/") if os.path.isfile(os.path.join(PathToDataSet + f"labels/", f))]
 
         n_X = len(self.files_X)
         n_Y = len(self.files_Y)
@@ -36,11 +34,11 @@ class ImSegDataSet(Dataset):
         self.n_samples_original = n_X
 
         #load one image to determin the size of the data
-        image = torch.Tensor(skimage.io.imread(self.files_X[0]))
+        image = read_image(self.files_X[0])
 
-        self.n_chanels = image.shape[2]
-        self.height = image.shape[0]
-        self.width = image.shape[1]
+        self.n_chanels = image.shape[0]
+        self.height = image.shape[1]
+        self.width = image.shape[2]
         
         #Print some stats about the data set
         print("#########################################################################################")
@@ -51,21 +49,31 @@ class ImSegDataSet(Dataset):
         print("#########################################################################################")
         
     def __len__(self):
-        pass
+        """
+        Returns the size of the data set.
+
+        parameters:
+            -
+        
+        retunrs:
+            Lenght of the data set
+        """
+        return self.n_samples_original
 
     def __getitem__(self, index):
-        pass
+        """
+        Load and return one instance of the data set
 
-DS = ImSegDataSet(PathToDataSet = "./data/test_set/",mode = "test")
+        parameters:
+            index:      Position of the desired instance in the data set
+        
+        returns:
+            X:          Features of instance index
+            Y:          Groundtruth labeling for instance index
+        """
 
-from utils.image_utils import *
-import matplotlib.pyplot as plt
+        #Load the image
+        X = read_image(self.files_X[index])
+        Y = read_image(self.files_Y[index])
 
-image = skimage.io.imread(DS.files_X[0])
-a = skimage.transform.rescale(image, 1 / 4, anti_aliasing=True, channel_axis=2) #Do we need anti-aliasing?
-
-fig, ax = plt.subplots(2)
-ax[0].imshow(image)
-ax[1].imshow(a)
-plt.show()
-print(torch.tensor(image).shape,torch.tensor(a).shape)
+        return X,Y
