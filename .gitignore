@@ -1,0 +1,5 @@
+data/train_set
+data/validation_set
+data/test_set
+semantic_drone_dataset/label_images_semantic
+semantic_drone_dataset/original_images
