@@ -4,6 +4,7 @@ from utils.Buffer import ImageBuffer
 import tqdm 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -133,7 +134,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
             for j in range(buffer_update_freq):
 
                 #sample from the buffers
-                indices = np.random.permutation(min(buffer_images.size,buffer_images.buffer_pick_size))
+                indices = np.random.permutation(min(buffer_images.size,buffer_size))[:buffer_pick_size]
 
                 raw_images_tensor = buffer_images.sample(indices = indices)
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
@@ -169,7 +170,14 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 
                 else: 
                     counter_training_loss += 1
-            break
+
+        #visualize the buffer images
+        if epoch > 1:
+            fig, ax = plt.subplots(buffer_images.size,2,figsize = (10,30))
+            for i in range(buffer_images.size):
+                ax[i][0].imshow(buffer_images.internal_storage[i].int().transpose(0,2).transpose(0,1).numpy())
+                ax[i][1].imshow(buffer_labels.internal_storage[i].int().numpy())
+            plt.savefig(f"results/{tag}/images/buffer_im_{epoch}.jpg")
 
         model.eval()
 
@@ -220,8 +228,6 @@ def validate(model, dataloader, criterion, device,patch_size):
             batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
             predictions = model(batch_images)
-
-            print(batch_labels.shape,predictions.shape)
 
             loss = criterion(input = predictions,target = batch_labels)
 
