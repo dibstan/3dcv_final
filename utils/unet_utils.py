@@ -138,16 +138,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 raw_images_tensor = buffer_images.sample(indices = indices)
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
 
-                import matplotlib.pyplot as plt
-
-                im = raw_images_tensor[0].transpose(0,2).transpose(0,1).numpy()
-                print(im.shape)
-                print(im)
-                plt.imshow(im)
-                plt.show()
-
-                break
-
                 """
                 TO DO:
                 
