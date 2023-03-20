@@ -133,8 +133,20 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
             for j in range(buffer_update_freq):
 
                 #sample from the buffers
-                raw_images_tensor = buffer_images.sample()
-                raw_labels_tensor = buffer_labels.sample()
+                indices = np.random.permutation(min(buffer_images.size,buffer_images.buffer_pick_size))
+
+                raw_images_tensor = buffer_images.sample(indices = indices)
+                raw_labels_tensor = buffer_labels.sample(indices = indices)
+
+                import matplotlib.pyplot as plt
+
+                im = raw_images_tensor[0].transpose(0,2).transpose(0,1).numpy()
+                print(im.shape)
+                print(im)
+                plt.imshow(im)
+                plt.show()
+
+                break
 
                 """
                 TO DO:

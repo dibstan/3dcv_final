@@ -27,7 +27,7 @@ class ImageBuffer():
         else:
             self.internal_storage = torch.zeros(buffer_size,C,H,W)
 
-    def sample(self):
+    def sample(self,indices):
         """
         Return a tensor containing min(buffer_size,self.buffer_pick_size) raw images.
 
@@ -37,8 +37,7 @@ class ImageBuffer():
             image_tensor:       Tensor containing min(buffer_size,self.buffer_pick_size) raw images.
         """
 
-        inices = np.random.permutation(min(self.size,self.buffer_pick_size))
-        image_tensor = self.internal_storage[inices]
+        image_tensor = self.internal_storage[indices]
 
         return image_tensor
     
