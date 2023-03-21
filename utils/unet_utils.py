@@ -131,7 +131,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
         #Loop over all images in the training set
         for batch_idx, (X,Y) in enumerate(tqdm.tqdm(dataloader_training)):
-
+            #print(torch.cuda.memory_allocated(0))
             #Update the buffers
             buffer_images.update(new_image = X[0])
             buffer_labels.update(new_image = Y[0][0])
@@ -147,28 +147,32 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring).to(device)
                 batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring).to(device)
 
-                #batch_images = raw_images_tensor[:,:,:patch_size,:patch_size].to(device)            #Only Dummy implementation
-                #batch_labels = raw_labels_tensor[:,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
-                #Get prediction from the model
-                prdictions = model(batch_images)
+                for i, image in enumerate(batch_images):
+                    #print(i)
+                    #batch_images = raw_images_tensor[:,:,:patch_size,:patch_size].to(device)            #Only Dummy implementation
+                    #batch_labels = raw_labels_tensor[:,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
+                    image = torch.unsqueeze(image, axis = 0)
+                    label = torch.unsqueeze(batch_labels[i], axis = 0).long()
+                    #Get prediction from the model
+                    prdictions = model(image)
 
-                #Compute the loss
-                loss = criterion(input = prdictions,target = batch_labels)
+                    #Compute the loss
+                    loss = criterion(input = prdictions,target = label)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
-                storage_training_loss[counter_training_loss] = loss.detach()
-                if storage_training_loss.shape[0]-1 == counter_training_loss:
-                    with open(f"results/{tag}/data/training_loss.txt","a+") as file:
-                        np.savetxt(file,storage_training_loss.to("cpu").numpy())
-                    file.close()
-                    counter_training_loss = 0
-                
-                else: 
-                    counter_training_loss += 1
+                    storage_training_loss[counter_training_loss] = loss.detach()
+                    if storage_training_loss.shape[0]-1 == counter_training_loss:
+                        with open(f"results/{tag}/data/training_loss.txt","a+") as file:
+                            np.savetxt(file,storage_training_loss.to("cpu").numpy())
+                        file.close()
+                        counter_training_loss = 0
+                    
+                    else: 
+                        counter_training_loss += 1
 
         #visualize the buffer images
         if epoch > 1:
