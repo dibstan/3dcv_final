@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from utils.Buffer import ImageBuffer
+import utils.image_utils as iu
 import tqdm 
 import os
 import numpy as np
@@ -59,7 +60,7 @@ class UNet(nn.Module):
         
         return x
     
-def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,buffer_pick_size,n_epochs,patch_size,tag):
+def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,buffer_pick_size,n_epochs,patch_size,tag,rotation,mirroring):
     """
     Train a unet model.
 
@@ -77,6 +78,8 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         patch_size:             Size of the patches used to train the model
         n_epochs:               Number of epochs
         tag:                    Unique identifier to mark the training run
+        rotation:               Use rotation for image augmentation
+        mirroring:              Use mirroring for image augmentation
 
     returns:
         status:         True if the training finishes successfully
@@ -118,14 +121,16 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     #Set the model to training mode
     model.train()
 
-    #initializ ethe buffer class
+    #initialize the buffer class
     buffer_images = ImageBuffer(buffer_size=buffer_size,buffer_pick_size=buffer_pick_size,C = dataloader_training.dataset.n_chanels,H = dataloader_training.dataset.height,W = dataloader_training.dataset.width)
     buffer_labels = ImageBuffer(buffer_size=buffer_size,buffer_pick_size=buffer_pick_size,C = 1,H = dataloader_training.dataset.height,W = dataloader_training.dataset.width)
 
-    for epoch in tqdm.tqdm(range(1,n_epochs+1)):
+    #for epoch in tqdm.tqdm(range(1,n_epochs+1)):
+    for epoch in range(1,n_epochs+1):
+        print('Epoch: {} \n'.format(epoch))
 
         #Loop over all images in the training set
-        for batch_idx, (X,Y) in enumerate(dataloader_training):
+        for batch_idx, (X,Y) in enumerate(tqdm.tqdm(dataloader_training)):
 
             #Update the buffers
             buffer_images.update(new_image = X[0])
@@ -139,17 +144,11 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 raw_images_tensor = buffer_images.sample(indices = indices)
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
 
-                """
-                TO DO:
-                
-                1) Use raw images from the buffer to create a minibatch and apply augmentation
-                   The image batch requires shape [batchsize,3,patch_size,patch_size], the label batch requires shape [batchsize,patch_size,patch_size]
-                2) Sent the miibatch to the device
-                3) replace the dummy implementation
-                """
+                batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring).to(device)
+                batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring).to(device)
 
-                batch_images = raw_images_tensor[:,:,:patch_size,:patch_size].to(device)            #Only Dummy implementation
-                batch_labels = raw_labels_tensor[:,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
+                #batch_images = raw_images_tensor[:,:,:patch_size,:patch_size].to(device)            #Only Dummy implementation
+                #batch_labels = raw_labels_tensor[:,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
                 #Get prediction from the model
                 prdictions = model(batch_images)
