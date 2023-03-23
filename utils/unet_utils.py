@@ -147,7 +147,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring).to(device)
                 batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring).to(device)
 
-
+                
                 for i, image in enumerate(batch_images):
                     #print(i)
                     #batch_images = raw_images_tensor[:,:,:patch_size,:patch_size].to(device)            #Only Dummy implementation
@@ -163,12 +163,12 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
-
                     storage_training_loss[counter_training_loss] = loss.detach()
                     if storage_training_loss.shape[0]-1 == counter_training_loss:
                         with open(f"results/{tag}/data/training_loss.txt","a+") as file:
                             np.savetxt(file,storage_training_loss.to("cpu").numpy())
                         file.close()
+                        
                         counter_training_loss = 0
                     
                     else: 

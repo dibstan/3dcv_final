@@ -10,7 +10,7 @@ def times_divide_by_two(a, b):
     '''
     count = 0
     while a >= b:
-        a /= 2
+        a /= 3
         count += 1
     return count
 
@@ -20,12 +20,12 @@ def list_scaled_images(image, wsize, levels):
     Each image is smaller than the previous by factor two.
     First list entry is original image.
     '''
-    scaled_images = [image]
+    scaled_images = []
     for _ in range(levels-1):
         if len(image.shape) > 2:
-            image = skimage.transform.rescale(image, 0.5, anti_aliasing=False, channel_axis=2) #Do we need anti-aliasing?
+            image = skimage.transform.rescale(image, 0.33, anti_aliasing=False, channel_axis=2) #Do we need anti-aliasing?
         else:
-            image = skimage.transform.rescale(image, 0.5, anti_aliasing=False)
+            image = skimage.transform.rescale(image, 0.33, anti_aliasing=False)
         scaled_images.append(image)
     return scaled_images
 
