@@ -151,11 +151,8 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=False).to(device)
                 batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=False).to(device)
 
-                if batch_idx == 0:
-                    print(batch_images.shape)
-
-                #batch_images = skimage.transform.resize(raw_images_tensor[0].permute(1,2,0), (patch_size, patch_size))
-                #batch_labels = skimage.transform.resize(raw_labels_tensor[0], (patch_size, patch_size))
+                #if batch_idx == 0:
+                #    print(batch_images.shape)
                 
                 for i, image in enumerate(batch_images):
                     #print(i)
@@ -165,11 +162,13 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     label = torch.unsqueeze(batch_labels[i], axis = 0).long()
                     #Get prediction from the model
                     prdictions = model(image)
-                    if batch_idx == 100:
-                        if i == 0:
-                            fig, ax = plt.subplots(2)
-                            ax[0].imshow(prdictions[0,3,:,:].cpu().detach().numpy())
-                            ax[1].imshow(batch_images[i].permute(1,2,0).cpu().detach().numpy())
+
+                    #Save an example image
+                    #if batch_idx == 100:
+                    #    if i == 0:
+                    #        fig, ax = plt.subplots(2)
+                    #        ax[0].imshow(prdictions[0,3,:,:].cpu().detach().numpy()) #class 3 is predictions for grass
+                    #        ax[1].imshow(batch_images[i].permute(1,2,0).cpu().detach().numpy())
 
                     #Compute the loss
                     loss = criterion(input = prdictions,target = label)
