@@ -10,7 +10,7 @@ def times_divide_by_two(a, b):
     '''
     count = 0
     while a >= b:
-        a /= 3
+        a /= 2
         count += 1
     return count
 
@@ -84,7 +84,7 @@ def list_rotated_images(image):
 
 # Image prep procedure:
 
-# Create list of downscaled images, scaling by factor 2 until smallest image side < windowsize
+# Create list of downscaled images, scaling by factor n until smallest image side < windowsize
 # Slice each image version (original and all downscaled versions) into square patches of size windowsize
 # Rotate each patch three times by 90 deg to create four rotated versions of one patch
 # Optional: Mirror each patch

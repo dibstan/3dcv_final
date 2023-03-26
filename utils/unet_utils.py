@@ -6,6 +6,7 @@ import tqdm
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import skimage
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -60,7 +61,8 @@ class UNet(nn.Module):
         
         return x
     
-def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,buffer_pick_size,n_epochs,patch_size,tag,rotation,mirroring):
+def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,
+          buffer_pick_size, n_epochs, patch_size, tag, rotation, mirroring, scaling_factor):
     """
     Train a unet model.
 
@@ -80,6 +82,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         tag:                    Unique identifier to mark the training run
         rotation:               Use rotation for image augmentation
         mirroring:              Use mirroring for image augmentation
+        scaling_factor:         How much the image should be downscaled in each scaling
 
     returns:
         status:         True if the training finishes successfully
@@ -143,10 +146,16 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 raw_images_tensor = buffer_images.sample(indices = indices)
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
-                
-                batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=6, use_original=False).to(device)
-                batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=6, use_original=False).to(device)
 
+                
+                batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=False).to(device)
+                batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=False).to(device)
+
+                if batch_idx == 0:
+                    print(batch_images.shape)
+
+                #batch_images = skimage.transform.resize(raw_images_tensor[0].permute(1,2,0), (patch_size, patch_size))
+                #batch_labels = skimage.transform.resize(raw_labels_tensor[0], (patch_size, patch_size))
                 
                 for i, image in enumerate(batch_images):
                     #print(i)
@@ -156,6 +165,11 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     label = torch.unsqueeze(batch_labels[i], axis = 0).long()
                     #Get prediction from the model
                     prdictions = model(image)
+                    if batch_idx == 100:
+                        if i == 0:
+                            fig, ax = plt.subplots(2)
+                            ax[0].imshow(prdictions[0,3,:,:].cpu().detach().numpy())
+                            ax[1].imshow(batch_images[i].permute(1,2,0).cpu().detach().numpy())
 
                     #Compute the loss
                     loss = criterion(input = prdictions,target = label)
