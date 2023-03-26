@@ -14,18 +14,29 @@ def times_divide_by_two(a, b):
         count += 1
     return count
 
-def list_scaled_images(image, wsize, levels):
+def times_divide_by_n(a, b, n):
+    '''
+    Calculate number of times a can be divided 
+    by n before it is smaller than b
+    '''
+    count = 0
+    while a >= b:
+        a /= n
+        count += 1
+    return count
+
+def list_scaled_images(image, wsize, levels, n):
     '''
     Return list of downscaled images of length levels.
-    Each image is smaller than the previous by factor two.
+    Each image is smaller than the previous by factor n.
     First list entry is original image.
     '''
-    scaled_images = []
+    scaled_images = [image]
     for _ in range(levels-1):
         if len(image.shape) > 2:
-            image = skimage.transform.rescale(image, 0.33, anti_aliasing=False, channel_axis=2) #Do we need anti-aliasing?
+            image = skimage.transform.rescale(image, 1/n, anti_aliasing=False, channel_axis=2) #Do we need anti-aliasing?
         else:
-            image = skimage.transform.rescale(image, 0.33, anti_aliasing=False)
+            image = skimage.transform.rescale(image, 1/n, anti_aliasing=False)
         scaled_images.append(image)
     return scaled_images
 
@@ -108,7 +119,7 @@ def prepare_image(image, wsize, rotation=True, mirroring=False):
     return patches
 
 
-def prepare_image_torch(image, wsize, rotation=True, mirroring=False):
+def prepare_image_torch(image, wsize, rotation=True, mirroring=False, n=2, use_original=True):
     '''
     Return list of all possible square patches for one input image.
     Number of patches is len(scaled_images) x 4 (x 2 if mirroring=True).
@@ -119,18 +130,23 @@ def prepare_image_torch(image, wsize, rotation=True, mirroring=False):
         image: torch.tensor, either shape (dim1, dim2, 3) or shape (dim1, dim2)
         wsize: int, side length of each square patch
         rotation, mirroring: bool, triggers rotation and mirroring of each resulting patch
+        n: int, factor by which the image is downscaled to create additional patches
     Returns:
         patches: torch.tensor, either shape (n_patches,3,wsize,wsize) or (n_patches,wsize,wsize)
 
     '''
     image = image.numpy() #Convert torch input to numpy array
-    levels = times_divide_by_two(np.min([image.shape[0],image.shape[1]]), wsize)
-    scaled_images = list_scaled_images(image, wsize, levels)
+    levels = times_divide_by_n(np.min([image.shape[0],image.shape[1]]), wsize, n=n)
+    scaled_images = list_scaled_images(image, wsize, levels, n=n)
     #print(len(scaled_images))
     tiles = [] 
     patches = [] #tiles and patches are just two buffers for the patches until all patches are generated
-    for img in scaled_images:
-        tiles.extend(list_tiles(img, wsize))
+    if use_original == True:
+        for img in scaled_images:
+            tiles.extend(list_tiles(img, wsize))
+    else:
+        for img in scaled_images[1:]:
+            tiles.extend(list_tiles(img, wsize))
     patches = tiles
     #print(len(patches))
     if mirroring == True:
