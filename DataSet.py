@@ -10,7 +10,7 @@ class ImSegDataSet(Dataset):
 
         parameters:
             PathToDataSet:     Location of the training data (Folder containing subfolders for images and labels)
-            mode:              How is the data set used (train,validation or test)         
+            mode:              How is the data set used (train,validation or test)   
         """
         super().__init__()
 
@@ -39,7 +39,7 @@ class ImSegDataSet(Dataset):
         self.n_chanels = image.shape[0]
         self.height = image.shape[1]
         self.width = image.shape[2]
-        
+
         #Print some stats about the data set
         print("#########################################################################################")
         print("INFO ABOUT THE DATA SET:")
@@ -73,7 +73,7 @@ class ImSegDataSet(Dataset):
         """
 
         #Load the image
-        X = read_image(self.files_X[index])
+        X = read_image(self.files_X[index]) / 255
         Y = read_image(self.files_Y[index])
-
+    
         return X,Y
