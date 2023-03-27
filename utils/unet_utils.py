@@ -157,22 +157,13 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 #    print(batch_images.shape)
                 
                 for i, image in enumerate(batch_images):
-                    #print(i)
-                    #batch_images = raw_images_tensor[:,:,:patch_size,:patch_size].to(device)            #Only Dummy implementation
-                    #batch_labels = raw_labels_tensor[:,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
+
                     image = torch.unsqueeze(image, axis = 0)
                     label = torch.unsqueeze(batch_labels[i], axis = 0).long()
+
                     #Get prediction from the model
                     prdictions = model(image)
 
-                    #Save an example image
-                    #if batch_idx == 100:
-                    #    if i == 0:
-                    #        fig, ax = plt.subplots(2)
-                    #        ax[0].imshow(prdictions[0,3,:,:].cpu().detach().numpy()) #class 3 is predictions for grass
-                    #        ax[1].imshow(batch_images[i].permute(1,2,0).cpu().detach().numpy())
-
-                    #Compute the loss
                     loss = criterion(input = prdictions,target = label)
 
                     optimizer.zero_grad()
@@ -188,14 +179,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     
                     else: 
                         counter_training_loss += 1
-
-        #visualize the buffer images
-        if epoch > 1:
-            fig, ax = plt.subplots(buffer_images.size,2,figsize = (10,30))
-            for i in range(buffer_images.size):
-                ax[i][0].imshow(buffer_images.internal_storage[i].int().transpose(0,2).transpose(0,1).numpy())
-                ax[i][1].imshow(buffer_labels.internal_storage[i].int().numpy())
-            plt.savefig(f"results/{tag}/images/buffer_im_{epoch}.jpg")
 
         model.eval()
 
@@ -250,19 +233,19 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     plt.close()
 
     #Plot the confusion matrix for the hard decisions
-    #class_names = ["unlabeled","paved-area","dirt","grass","gravel","water","rocks","pool","vegetation","roof","wall","window","door","fence","fence-pole","person","dog","car","bicycle","tree","bald-tree","ar-marker","obstacle","conflicting"]
-    #cm = metrics.confusion_matrix(y_true = ground_truth.flatten(), y_pred =pred_hard_decision.flatten(),labels = np.arange(len(class_names)))
-    #cm = np.ones((10,10))
-    #fig = plt.figure(figsize = (15,15))
-    #im = plt.imshow(cm)
-    #plt.xticks(ticks = np.arange(len(class_names)),labels = class_names,rotation=90,fontsize = fs)
-    #plt.yticks(ticks = np.arange(len(class_names)),labels = class_names,fontsize = fs)
-    #plt.xlabel("Predicted class",fontsize = fs)
-    #plt.ylabel("True class",fontsize = fs)
-    #plt.tight_layout()
+    class_names = ["unlabeled","paved-area","dirt","grass","gravel","water","rocks","pool","vegetation","roof","wall","window","door","fence","fence-pole","person","dog","car","bicycle","tree","bald-tree","ar-marker","obstacle","conflicting"]
+    cm = metrics.confusion_matrix(y_true = ground_truth.flatten(), y_pred =pred_hard_decision.flatten(),labels = np.arange(len(class_names)))
+    
+    fig = plt.figure(figsize = (15,15))
+    im = plt.imshow(cm)
+    plt.xticks(ticks = np.arange(len(class_names)),labels = class_names,rotation=90,fontsize = fs)
+    plt.yticks(ticks = np.arange(len(class_names)),labels = class_names,fontsize = fs)
+    plt.xlabel("Predicted class",fontsize = fs)
+    plt.ylabel("True class",fontsize = fs)
+    plt.tight_layout()
 
-    #plt.savefig(image_folder + "confusion-matrix.jpg")
-    #plt.close()
+    plt.savefig(image_folder + "confusion-matrix.jpg")
+    plt.close()
 
 def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_factor):
     """
@@ -289,21 +272,20 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
 
             Select proper patch from the images.
             """
-            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).to(device)
-            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).to(device)
+            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).float().to(device)
+            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).long().to(device)
             #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
             #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
             predictions = model(batch_images)
 
             #visualization
-            
             path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}/"
             os.makedirs(path)
             visualizer(ground_truth = batch_labels[0].detach().cpu(),prediction = predictions[0].detach().cpu(),image = batch_images[0].detach().cpu(),image_folder = path,fs = 30)
                 
-            #loss = criterion(input = predictions,target = batch_labels)
+            loss = criterion(input = predictions,target = batch_labels)
 
-            #total_loss += loss.item() * X.shape[0]
+            total_loss += loss.item() * X.shape[0]
 
     return total_loss
