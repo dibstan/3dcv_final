@@ -203,7 +203,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
 
         #Get the validation loss of the model
-        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,tag = tag,epoch = epoch)
+        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,tag = tag,epoch = epoch, scaling_factor= scaling_factor)
 
         #Save the total validation loss
         with open(f"results/{tag}/data/validation_loss.txt","a+") as file:
@@ -225,7 +225,7 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
         image_folder:       path to folder where teh images a<re stored
         fs:                 Fontsize for labeling
     """
-    print(np.shape(image))
+    
     #Get the probabilities of the individual classes
     class_probs_per_pixel = torch.nn.functional.softmax(prediction, dim=0)
 
@@ -264,7 +264,7 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     #plt.savefig(image_folder + "confusion-matrix.jpg")
     #plt.close()
 
-def validate(model, dataloader, criterion, device,patch_size,tag,epoch):
+def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_factor):
     """
     Compute the total loss of the model on the validation set
 
@@ -289,16 +289,15 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch):
 
             Select proper patch from the images.
             """
-            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=20, use_original=False).to(device)
-            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=20, use_original=False).to(device)
+            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).to(device)
+            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).to(device)
             #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
             #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
             predictions = model(batch_images)
 
             #visualization
-            print(np.shape(batch_labels))
-            print(np.shape(predictions))
+            
             path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}/"
             os.makedirs(path)
             visualizer(ground_truth = batch_labels[0].detach().cpu(),prediction = predictions[0].detach().cpu(),image = batch_images[0].detach().cpu(),image_folder = path,fs = 30)
