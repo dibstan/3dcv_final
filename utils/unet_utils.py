@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import metrics
 import skimage
+from utils.image_utils import list_scaled_images
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -224,7 +225,7 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
         image_folder:       path to folder where teh images a<re stored
         fs:                 Fontsize for labeling
     """
-
+    print(np.shape(image))
     #Get the probabilities of the individual classes
     class_probs_per_pixel = torch.nn.functional.softmax(prediction, dim=0)
 
@@ -249,19 +250,19 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     plt.close()
 
     #Plot the confusion matrix for the hard decisions
-    class_names = ["unlabeled","paved-area","dirt","grass","gravel","water","rocks","pool","vegetation","roof","wall","window","door","fence","fence-pole","person","dog","car","bicycle","tree","bald-tree","ar-marker","obstacle","conflicting"]
-    cm = metrics.confusion_matrix(y_true = ground_truth.flatten(), y_pred =pred_hard_decision.flatten(),labels = np.arange(len(class_names)))
+    #class_names = ["unlabeled","paved-area","dirt","grass","gravel","water","rocks","pool","vegetation","roof","wall","window","door","fence","fence-pole","person","dog","car","bicycle","tree","bald-tree","ar-marker","obstacle","conflicting"]
+    #cm = metrics.confusion_matrix(y_true = ground_truth.flatten(), y_pred =pred_hard_decision.flatten(),labels = np.arange(len(class_names)))
+    #cm = np.ones((10,10))
+    #fig = plt.figure(figsize = (15,15))
+    #im = plt.imshow(cm)
+    #plt.xticks(ticks = np.arange(len(class_names)),labels = class_names,rotation=90,fontsize = fs)
+    #plt.yticks(ticks = np.arange(len(class_names)),labels = class_names,fontsize = fs)
+    #plt.xlabel("Predicted class",fontsize = fs)
+    #plt.ylabel("True class",fontsize = fs)
+    #plt.tight_layout()
 
-    fig = plt.figure(figsize = (15,15))
-    im = plt.imshow(cm)
-    plt.xticks(ticks = np.arange(len(class_names)),labels = class_names,rotation=90,fontsize = fs)
-    plt.yticks(ticks = np.arange(len(class_names)),labels = class_names,fontsize = fs)
-    plt.xlabel("Predicted class",fontsize = fs)
-    plt.ylabel("True class",fontsize = fs)
-    plt.tight_layout()
-
-    plt.savefig(image_folder + "confusion-matrix.jpg")
-    plt.close()
+    #plt.savefig(image_folder + "confusion-matrix.jpg")
+    #plt.close()
 
 def validate(model, dataloader, criterion, device,patch_size,tag,epoch):
     """
@@ -288,20 +289,22 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch):
 
             Select proper patch from the images.
             """
-
-            batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
-            batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
+            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=20, use_original=False).to(device)
+            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=20, use_original=False).to(device)
+            #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
+            #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
             predictions = model(batch_images)
 
             #visualization
-
+            print(np.shape(batch_labels))
+            print(np.shape(predictions))
             path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}/"
             os.makedirs(path)
-            visualizer(ground_truth = batch_labels[0],prediction = predictions[0],image = batch_images[0],image_folder = path,fs = 30)
+            visualizer(ground_truth = batch_labels[0].detach().cpu(),prediction = predictions[0].detach().cpu(),image = batch_images[0].detach().cpu(),image_folder = path,fs = 30)
                 
-            loss = criterion(input = predictions,target = batch_labels)
+            #loss = criterion(input = predictions,target = batch_labels)
 
-            total_loss += loss.item() * X.shape[0]
+            #total_loss += loss.item() * X.shape[0]
 
     return total_loss
