@@ -6,6 +6,7 @@ import tqdm
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import metrics
 import skimage
 
 class DoubleConv(nn.Module):
@@ -201,7 +202,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
 
         #Get the validation loss of the model
-        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size)
+        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,tag = tag,epoch = epoch)
 
         #Save the total validation loss
         with open(f"results/{tag}/data/validation_loss.txt","a+") as file:
@@ -214,7 +215,55 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     return status
 
 
-def validate(model, dataloader, criterion, device,patch_size):
+def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
+    """
+    parameters:
+        ground_truth:       Tensoor of shape (H,W) containing the true labels
+        prediction:         Tensor of shape (C,H,W) containing the predicted logits
+        image:              Raw image
+        image_folder:       path to folder where teh images a<re stored
+        fs:                 Fontsize for labeling
+    """
+
+    #Get the probabilities of the individual classes
+    class_probs_per_pixel = torch.nn.functional.softmax(prediction, dim=0)
+
+    #Get the Maximum a posterioiri labels
+    pred_hard_decision = torch.argmax(class_probs_per_pixel,dim = 0)
+
+    #Plot the hard decision
+    fig,axs = plt.subplots(1,3,figsize = (30,8))
+    axs[0].imshow(image.permute(1,2,0).detach().numpy())
+    axs[0].axis("off")
+    axs[0].set_title("Image",fontsize = fs)
+
+    axs[1].imshow(ground_truth.detach().numpy())
+    axs[1].axis("off")
+    axs[1].set_title("Ground truth class labels",fontsize = fs)
+
+    axs[2].imshow(pred_hard_decision.detach().numpy())
+    axs[2].axis("off")
+    axs[2].set_title("MAP labels",fontsize = fs)
+
+    plt.savefig(image_folder + "hard-labels.jpg")
+    plt.close()
+
+    #Plot the confusion matrix for the hard decisions
+    class_names = ["unlabeled","paved-area","dirt","grass","gravel","water","rocks","pool","vegetation","roof","wall","window","door","fence","fence-pole","person","dog","car","bicycle","tree","bald-tree","ar-marker","obstacle","conflicting"]
+    cm = metrics.confusion_matrix(y_true = ground_truth.flatten(), y_pred =pred_hard_decision.flatten(),labels = np.arange(len(class_names)))
+
+    fig = plt.figure(figsize = (15,15))
+    im = plt.imshow(cm)
+    plt.xticks(ticks = np.arange(len(class_names)),labels = class_names,rotation=90,fontsize = fs)
+    plt.yticks(ticks = np.arange(len(class_names)),labels = class_names,fontsize = fs)
+    plt.xlabel("Predicted class",fontsize = fs)
+    plt.ylabel("True class",fontsize = fs)
+    plt.tight_layout()
+
+    plt.savefig(image_folder + "confusion-matrix.jpg")
+    plt.close()
+
+def validate(model, dataloader, criterion, device,patch_size,tag,epoch):
     """
     Compute the total loss of the model on the validation set
 
@@ -245,6 +294,12 @@ def validate(model, dataloader, criterion, device,patch_size):
 
             predictions = model(batch_images)
 
+            #visualization
+
+            path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}/"
+            os.makedirs(path)
+            visualizer(ground_truth = batch_labels[0],prediction = predictions[0],image = batch_images[0],image_folder = path,fs = 30)
+                
             loss = criterion(input = predictions,target = batch_labels)
 
             total_loss += loss.item() * X.shape[0]
