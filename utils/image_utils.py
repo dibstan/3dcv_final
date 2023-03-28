@@ -34,7 +34,7 @@ def list_scaled_images(image, levels, n):
     '''
     scaled_images = [image]
     for _ in range(levels-1):
-        image = cv2.resize(image, dsize = (int(image.shape[1]/n), int(image.shape[0]/n)))
+        image = cv2.resize(image, dsize = (int(image.shape[1]/n), int(image.shape[0]/n)), interpolation = cv2.INTER_NEAREST)
         #if len(image.shape) > 2:
         #    image = cv2.resize(image, dsize = (int(image.shape[1]/n), int(image.shape[0]/n))) #Do we need anti-aliasing?
         #else:

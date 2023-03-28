@@ -204,7 +204,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         model.eval()
 
         #Save the state dict
-        torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
+        #torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
 
         #Get the validation loss of the model
         total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,tag = tag,epoch = epoch, scaling_factor= scaling_factor)
