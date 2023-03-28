@@ -177,10 +177,10 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_labels = batch_labels[ind]
 
 
-                for i in range(0, batch_images.size()[0]-1, 2):
+                for i in range(0, batch_images.size()[0]-1, 5):
                     
-                    image = batch_images[i:i+2].to(device)
-                    label = batch_labels[i:i+2].long().to(device)
+                    image = batch_images[i:i+5].to(device)
+                    label = batch_labels[i:i+5].long().to(device)
 
                     #Get prediction from the model
                     prdictions = model(image)
@@ -207,7 +207,8 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         #torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
 
         #Get the validation loss of the model
-        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,tag = tag,epoch = epoch, scaling_factor= scaling_factor)
+        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,
+                                  tag = tag,epoch = epoch, scaling_factor= scaling_factor, use_original = use_original)
 
         #Save the total validation loss
         with open(f"results/{tag}/data/validation_loss.txt","a+") as file:
@@ -268,7 +269,7 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     plt.savefig(image_folder + "confusion-matrix.jpg")
     plt.close()
 
-def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_factor):
+def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_factor, use_original):
     """
     Compute the total loss of the model on the validation set
 
@@ -293,20 +294,27 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
 
             Select proper patch from the images.
             """
-            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).float().to(device)
-            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=False).long().to(device)
+            batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).float().to(device)
+            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).long().to(device)
             #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
             #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
-            predictions = model(batch_images)
+            for j in range(0, batch_images.size()[0]-1, 5):
+
+                image = batch_images[j:j+5].to(device)
+                label = batch_labels[j:j+5].long().to(device)
+                prediction = model(image)
+
+                loss = criterion(inputs = prediction,targets = label)
+                total_loss += loss.item() * X.shape[0]
 
             #visualization
             path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}/"
             os.makedirs(path)
-            visualizer(ground_truth = batch_labels[0].detach().cpu(),prediction = predictions[0].detach().cpu(),image = batch_images[0].detach().cpu(),image_folder = path,fs = 30)
+            visualizer(ground_truth = label[0].detach().cpu(),prediction = prediction[0].detach().cpu(),image = image[0].detach().cpu(),image_folder = path,fs = 30)
                 
-            loss = criterion(inputs = predictions,targets = batch_labels)
+            
 
-            total_loss += loss.item() * X.shape[0]
+            
 
     return total_loss
