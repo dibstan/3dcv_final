@@ -64,7 +64,7 @@ class UNet(nn.Module):
         return x
     
 def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,
-          buffer_pick_size, n_epochs, patch_size, tag, rotation, mirroring, scaling_factor):
+          buffer_pick_size, n_epochs, patch_size, tag, rotation, mirroring, scaling_factor, use_original):
     """
     Train a unet model.
 
@@ -85,6 +85,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         rotation:               Use rotation for image augmentation
         mirroring:              Use mirroring for image augmentation
         scaling_factor:         How much the image should be downscaled in each scaling
+        use_original:           Use the original image for training or start with the first downscaled version
 
     returns:
         status:         True if the training finishes successfully
@@ -150,11 +151,13 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
 
                 
-                batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=False).to(device)
-                batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=False).to(device)
+                batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original).to(device)
+                batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original).to(device)
 
-                #if batch_idx == 0:
-                #    print(batch_images.shape)
+                #if batch_idx == 1:
+                #    fig, ax = plt.subplots(2)
+                #    ax[0].imshow(batch_images[0].permute(1,2,0).cpu().detach().numpy())
+                #    ax[1].imshow(batch_labels[0].cpu().detach().numpy())
                 
                 for i, image in enumerate(batch_images):
 
@@ -164,7 +167,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     #Get prediction from the model
                     prdictions = model(image)
 
-                    loss = criterion(input = prdictions,target = label)
+                    loss = criterion(inputs = prdictions,targets = label)
 
                     optimizer.zero_grad()
                     loss.backward()
@@ -284,7 +287,7 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
             os.makedirs(path)
             visualizer(ground_truth = batch_labels[0].detach().cpu(),prediction = predictions[0].detach().cpu(),image = batch_images[0].detach().cpu(),image_folder = path,fs = 30)
                 
-            loss = criterion(input = predictions,target = batch_labels)
+            loss = criterion(inputs = predictions,targets = batch_labels)
 
             total_loss += loss.item() * X.shape[0]
 
