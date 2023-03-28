@@ -58,7 +58,7 @@ class ImSegDataSet(Dataset):
         retunrs:
             Lenght of the data set
         """
-        return self.n_samples_original
+        return 10 #self.n_samples_original
 
     def __getitem__(self, index):
         """

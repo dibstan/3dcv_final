@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from utils.Buffer import ImageBuffer
+import numpy as np
 import utils.image_utils as iu
 import tqdm 
 import os
@@ -150,25 +151,36 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 raw_images_tensor = buffer_images.sample(indices = indices)
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
 
-                
-                batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original).to(device)
-                batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original).to(device)
+                batch_images = torch.Tensor()
+                batch_labels = torch.Tensor()
+                for i, image in enumerate(raw_images_tensor):
+                    batch_image = iu.prepare_image_torch(image.permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original)
+                    batch_label = iu.prepare_image_torch(raw_labels_tensor[i], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original)
 
+                    batch_labels = torch.cat([batch_labels, batch_label])
+                    batch_images = torch.cat([batch_images, batch_image])
+
+                
+                
                 if (epoch == 1 and batch_idx == 0):
                     print("#########################################################################################")
                     print(f"\tNumber of images created from each image:\t{batch_images.shape[0]}")
                     print(f"\tShape of image batch:\t{batch_images.shape}")
                     print("#########################################################################################")
-
                 #if batch_idx == 1:
                 #    fig, ax = plt.subplots(2)
                 #    ax[0].imshow(batch_images[0].permute(1,2,0).cpu().detach().numpy())
                 #    ax[1].imshow(batch_labels[0].cpu().detach().numpy())
                 
-                for i, image in enumerate(batch_images):
+                ind = torch.randperm(batch_images.size()[0])
+                batch_images = batch_images[ind]
+                batch_labels = batch_labels[ind]
 
-                    image = torch.unsqueeze(image, axis = 0)
-                    label = torch.unsqueeze(batch_labels[i], axis = 0).long()
+
+                for i in range(0, batch_images.size()[0]-1, 2):
+                    
+                    image = batch_images[i:i+2].to(device)
+                    label = batch_labels[i:i+2].long().to(device)
 
                     #Get prediction from the model
                     prdictions = model(image)
