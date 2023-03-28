@@ -154,6 +154,12 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_images = iu.prepare_image_torch(raw_images_tensor[0].permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original).to(device)
                 batch_labels = iu.prepare_image_torch(raw_labels_tensor[0], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original).to(device)
 
+                if (epoch == 1 and batch_idx == 0):
+                    print("#########################################################################################")
+                    print(f"\tNumber of images created from each image:\t{batch_images.shape[0]}")
+                    print(f"\tShape of image batch:\t{batch_images.shape}")
+                    print("#########################################################################################")
+
                 #if batch_idx == 1:
                 #    fig, ax = plt.subplots(2)
                 #    ax[0].imshow(batch_images[0].permute(1,2,0).cpu().detach().numpy())
