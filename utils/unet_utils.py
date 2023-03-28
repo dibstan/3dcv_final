@@ -65,7 +65,7 @@ class UNet(nn.Module):
         return x
     
 def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,
-          buffer_pick_size, n_epochs, patch_size, tag, rotation, mirroring, scaling_factor, use_original):
+          buffer_pick_size, n_epochs, patch_size, batch_size, tag, rotation, mirroring, scaling_factor, use_original):
     """
     Train a unet model.
 
@@ -177,10 +177,10 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_labels = batch_labels[ind]
 
 
-                for i in range(0, batch_images.size()[0]-1, 5):
+                for i in range(0, batch_images.size()[0]-1, batch_size):
                     
-                    image = batch_images[i:i+5].to(device)
-                    label = batch_labels[i:i+5].long().to(device)
+                    image = batch_images[i:i+batch_size].to(device)
+                    label = batch_labels[i:i+batch_size].long().to(device)
 
                     #Get prediction from the model
                     prdictions = model(image)
@@ -207,7 +207,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         #torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
 
         #Get the validation loss of the model
-        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size,
+        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size, batch_size = batch_size,
                                   tag = tag,epoch = epoch, scaling_factor= scaling_factor, use_original = use_original)
 
         #Save the total validation loss
@@ -295,14 +295,14 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
             Select proper patch from the images.
             """
             batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).float().to(device)
-            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).long().to(device)
+            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, batch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).long().to(device)
             #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
             #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
-            for j in range(0, batch_images.size()[0]-1, 5):
+            for j in range(0, batch_images.size()[0]-1, batch_size):
 
-                image = batch_images[j:j+5].to(device)
-                label = batch_labels[j:j+5].long().to(device)
+                image = batch_images[j:j+batch_size].to(device)
+                label = batch_labels[j:j+batch_size].long().to(device)
                 prediction = model(image)
 
                 loss = criterion(inputs = prediction,targets = label)
