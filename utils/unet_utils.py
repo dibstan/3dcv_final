@@ -116,6 +116,14 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         file.write("validation-loss\n")
     file.close()
 
+    with open(f"results/{tag}/data/F1_score.txt","w") as file:
+        file.write("F1-score\n")
+    file.close()
+
+    with open(f"results/{tag}/data/accuracy.txt","w") as file:
+        file.write("accuracy\n")
+    file.close()
+
     #Store the loss
     storage_training_loss = torch.zeros(10).to(device)
     counter_training_loss = 0
@@ -159,14 +167,13 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                     batch_labels = torch.cat([batch_labels, batch_label])
                     batch_images = torch.cat([batch_images, batch_image])
-
-                
-                
+            
                 if (epoch == 1 and batch_idx == 0):
                     print("#########################################################################################")
                     print(f"\tNumber of images created from each image:\t{batch_images.shape[0]}")
                     print(f"\tShape of image batch:\t{batch_images.shape}")
                     print("#########################################################################################")
+                    
                 #if batch_idx == 1:
                 #    fig, ax = plt.subplots(2)
                 #    ax[0].imshow(batch_images[0].permute(1,2,0).cpu().detach().numpy())
@@ -201,21 +208,32 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     else: 
                         counter_training_loss += 1
 
-        model.eval()
+            if (batch_idx % 50 == 0 and batch_idx!=0):
+                model.eval()
 
-        #Save the state dict
-        #torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
+                #Save the state dict
+                #torch.save(model.state_dict(), f"results/{tag}/state_dicts/state-dict_epoch-{epoch}.pt")
 
-        #Get the validation loss of the model
-        total_val_loss = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size, batch_size = batch_size,
-                                  tag = tag,epoch = epoch, scaling_factor= scaling_factor, use_original = use_original)
+                #Get the validation loss of the model
+                total_val_loss, f1_score, acc_score = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size, batch_size = batch_size,
+                                          tag = tag,epoch = epoch, scaling_factor= scaling_factor, use_original = use_original, batch_idx = batch_idx)
 
-        #Save the total validation loss
-        with open(f"results/{tag}/data/validation_loss.txt","a+") as file:
-            np.savetxt(file,np.array([total_val_loss]))
-        file.close()
+                #Save the total validation loss
+                with open(f"results/{tag}/data/validation_loss.txt","a+") as file:
+                    np.savetxt(file,np.array([total_val_loss]))
+                file.close()
+
+                with open(f"results/{tag}/data/F1_score.txt","a+") as file:
+                    np.savetxt(file,np.array([f1_score]))
+                file.close()
+
+                with open(f"results/{tag}/data/accuracy.txt","a+") as file:
+                    np.savetxt(file,np.array([acc_score]))
+                file.close()                
+
+
         
-        model.train()
+                model.train()
 
     status = True
     return status
@@ -269,16 +287,19 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     plt.savefig(image_folder + "confusion-matrix.jpg")
     plt.close()
 
-def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_factor, use_original):
+def validate(model, dataloader, criterion, device, patch_size, batch_size, tag, epoch, scaling_factor, use_original, batch_idx):
     """
     Compute the total loss of the model on the validation set
 
     parameters:
-        model:       Model which is evaluated
-        dataLoader:  Dataloader used to extract validation data from the file system
-        criterion:   Criterion used to measure the discrepancy between the ground truth and the prediction
-        device:      Device on which the evaluation runs
-        patch_size:  Size of the image patches which are passed through the model
+        model:          Model which is evaluated
+        dataLoader:     Dataloader used to extract validation data from the file system
+        criterion:      Criterion used to measure the discrepancy between the ground truth and the prediction
+        device:         Device on which the evaluation runs
+        patch_size:     Size of the image patches which are passed through the model
+        scaling_factor: How much the image should be downscaled in each scaling
+        use_original:   Use the original image for training or start with the first downscaled version
+        batch_idx:      Index of the current batch
 
 
     returns:   
@@ -286,6 +307,10 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
     
     """
     total_loss = 0
+    f1_score = 0
+    acc_score = 0
+    counter = 0
+
     with torch.no_grad():
         for i,(X,Y) in enumerate(dataloader):
 
@@ -295,7 +320,7 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
             Select proper patch from the images.
             """
             batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).float().to(device)
-            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, batch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).long().to(device)
+            batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).long().to(device)
             #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
             #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
@@ -308,13 +333,30 @@ def validate(model, dataloader, criterion, device,patch_size,tag,epoch, scaling_
                 loss = criterion(inputs = prediction,targets = label)
                 total_loss += loss.item() * X.shape[0]
 
+                #Quantities to calculate F1 and accuracy
+                y_true = label.cpu().numpy().flatten()
+                y_pred = torch.argmax(prediction, dim=1).cpu().numpy().flatten()
+
+                #Calculate this batches F1 score
+                f1 = metrics.f1_score(y_true = y_true, y_pred = y_pred, average = 'weighted')
+                f1_score += f1
+
+                #Calculate this batches accuracy
+                acc = metrics.accuracy_score(y_true = y_true, y_pred = y_pred,)
+                acc_score += acc
+
+                counter += 1
+
             #visualization
-            path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}/"
-            os.makedirs(path)
-            visualizer(ground_truth = label[0].detach().cpu(),prediction = prediction[0].detach().cpu(),image = image[0].detach().cpu(),image_folder = path,fs = 30)
+            if i%10 == 0:
+                path = f"results/{tag}/images/Visualization_epoch-{epoch}_batch-{i+1}_idx{batch_idx}/"
+                os.makedirs(path)
+                visualizer(ground_truth = label[0].detach().cpu(),prediction = prediction[0].detach().cpu(),image = image[0].detach().cpu(),image_folder = path,fs = 30)
+    f1_score = f1_score/(counter)
+    acc_score = acc_score/(counter)
                 
             
 
             
 
-    return total_loss
+    return total_loss, f1_score, acc_score
