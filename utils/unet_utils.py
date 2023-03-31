@@ -180,7 +180,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     batch_labels = torch.cat([batch_labels, batch_label])
                     batch_images = torch.cat([batch_images, batch_image])
 
-                n_befor_quility_insp = batch_image.shape[0]
+                batch_before_quality_insp = batch_images.shape
 
                 a = batch_labels.reshape(batch_labels.shape[0],-1)
 
@@ -205,10 +205,10 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 storage_classes_per_pixel[uique_counts.numpy()] += counts_counts
             
-                if (epoch == 1 and batch_idx == 0):
+                if (epoch == 1 and batch_idx == 5):
                     print("#########################################################################################")
-                    print(f"\tNumber of images created from each image:\t{batch_images.shape[0]}")
-                    print(f"\tShape of image batch:\t{batch_images.shape}")
+                    print(f"\tNumber of images created from each image:\t{batch_before_quality_insp[0]}")
+                    print(f"\tShape of image batch:\t{batch_before_quality_insp}")
                     print("#########################################################################################")
                     
                 #if batch_idx == 1:
@@ -292,7 +292,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     """
     parameters:
-        ground_truth:       Tensoor of shape (H,W) containing the true labels
+        ground_truth:       Tensor of shape (H,W) containing the true labels
         prediction:         Tensor of shape (C,H,W) containing the predicted logits
         image:              Raw image
         image_folder:       path to folder where teh images a<re stored
