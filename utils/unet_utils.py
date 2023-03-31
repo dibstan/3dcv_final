@@ -65,7 +65,7 @@ class UNet(nn.Module):
         return x
     
 def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,
-          buffer_pick_size, n_epochs, patch_size, batch_size, tag, rotation, mirroring, scaling_factor, use_original):
+          buffer_pick_size, n_epochs, patch_size, batch_size, tag, rotation, mirroring, scaling_factor, use_original,threshold):
     """
     Train a unet model.
 
@@ -87,6 +87,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         mirroring:              Use mirroring for image augmentation
         scaling_factor:         How much the image should be downscaled in each scaling
         use_original:           Use the original image for training or start with the first downscaled version
+        threshold:              number of different classes per patch which is required to keep the patch in the training set
 
     returns:
         status:         True if the training finishes successfully
@@ -112,6 +113,10 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         file.write("training-loss\n")
     file.close()
 
+    with open(f"results/{tag}/data/classes_per_patch.txt","w") as file:
+        file.write("classes per patch\n")
+    file.close()
+
     with open(f"results/{tag}/data/validation_loss.txt","w") as file:
         file.write("validation-loss\n")
     file.close()
@@ -128,6 +133,9 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     storage_training_loss = torch.zeros(10).to(device)
     counter_training_loss = 0
 
+    #Store how many different classes are contained in each patch
+    storage_classes_per_pixel = torch.zeros(25)
+
     #For reproducability: Copy all the code files that have been used in the training
     """
     TO DO
@@ -139,6 +147,8 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     #initialize the buffer class
     buffer_images = ImageBuffer(buffer_size=buffer_size,buffer_pick_size=buffer_pick_size,C = dataloader_training.dataset.n_chanels,H = dataloader_training.dataset.height,W = dataloader_training.dataset.width)
     buffer_labels = ImageBuffer(buffer_size=buffer_size,buffer_pick_size=buffer_pick_size,C = 1,H = dataloader_training.dataset.height,W = dataloader_training.dataset.width)
+
+
 
     #for epoch in tqdm.tqdm(range(1,n_epochs+1)):
     for epoch in range(1,n_epochs+1):
@@ -161,12 +171,43 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 batch_images = torch.Tensor()
                 batch_labels = torch.Tensor()
+
+                #Create patches from each of the raw images samplesd from the buffer
                 for i, image in enumerate(raw_images_tensor):
                     batch_image = iu.prepare_image_torch(image.permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original)
                     batch_label = iu.prepare_image_torch(raw_labels_tensor[i], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original)
 
                     batch_labels = torch.cat([batch_labels, batch_label])
                     batch_images = torch.cat([batch_images, batch_image])
+
+                n_befor_quility_insp = batch_image.shape[0]
+
+                a = batch_labels.reshape(batch_labels.shape[0],-1)
+
+                counts = torch.zeros(a.shape[0])
+
+                for ri in range(a.shape[0]):
+                    counts[ri] = len(torch.unique(a[ri]))
+                
+                mask = (counts >= threshold)
+
+                #If no patch meets the criterion, use the image with the highest rate of different class labels
+                if mask.sum() == 0:
+                    i_max = torch.argmax(counts)
+
+                    mask[i_max] = True
+
+                batch_images = batch_images[mask]
+                batch_labels = batch_labels[mask]
+
+                #Save the recorded counts
+                uique_counts,counts_counts = torch.unique(counts,return_counts = True)
+
+                storage_classes_per_pixel[uique_counts.numpy()] += counts_counts
+
+                continue
+
+
             
                 if (epoch == 1 and batch_idx == 0):
                     print("#########################################################################################")
@@ -183,7 +224,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_images = batch_images[ind]
                 batch_labels = batch_labels[ind]
 
-
+                #Iterate over all patches in teh current selection in portions of batch_size images
                 for i in range(0, batch_images.size()[0]-1, batch_size):
                     
                     image = batch_images[i:i+batch_size].to(device)
@@ -208,6 +249,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     else: 
                         counter_training_loss += 1
 
+            #Validation
             if (batch_idx % 50 == 0 and batch_idx!=0):
                 model.eval()
 
@@ -218,7 +260,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 total_val_loss, f1_score, acc_score = validate(model = model, dataloader = dataLoader_validation, criterion = criterion, device = device,patch_size = patch_size, batch_size = batch_size,
                                           tag = tag,epoch = epoch, scaling_factor= scaling_factor, use_original = use_original, batch_idx = batch_idx)
 
-                #Save the total validation loss
+                #Save the performance measures
                 with open(f"results/{tag}/data/validation_loss.txt","a+") as file:
                     np.savetxt(file,np.array([total_val_loss]))
                 file.close()
@@ -231,9 +273,21 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     np.savetxt(file,np.array([acc_score]))
                 file.close()                
 
-
-        
                 model.train()
+
+    #Store the statistics about the number of samples per class
+    with open(f"results/{tag}/data/classes_per_patch.txt","a+") as file:
+        np.savetxt(file,storage_classes_per_pixel.to("cpu").numpy())
+    file.close()
+
+    #Plot the distribution of the number of classes per patch
+    fig = plt.figure(figsize = (30,8))
+    ax = plt.axes()
+    ax.plot(np.arange(len(storage_classes_per_pixel)),storage_classes_per_pixel.numpy() / storage_classes_per_pixel.sum())
+    ax.set_xlabel("classes per patch")
+    ax.set_xlabel("rel. count")
+    plt.savefig(f"results/{tag}/images/class_counts.jpg")
+    plt.close()
 
     status = True
     return status
@@ -353,10 +407,6 @@ def validate(model, dataloader, criterion, device, patch_size, batch_size, tag, 
                 os.makedirs(path)
                 visualizer(ground_truth = label[0].detach().cpu(),prediction = prediction[0].detach().cpu(),image = image[0].detach().cpu(),image_folder = path,fs = 30)
     f1_score = f1_score/(counter)
-    acc_score = acc_score/(counter)
-                
-            
-
-            
+    acc_score = acc_score/(counter)    
 
     return total_loss, f1_score, acc_score
