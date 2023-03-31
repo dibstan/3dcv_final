@@ -204,10 +204,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 uique_counts,counts_counts = torch.unique(counts,return_counts = True)
 
                 storage_classes_per_pixel[uique_counts.numpy()] += counts_counts
-
-                continue
-
-
             
                 if (epoch == 1 and batch_idx == 0):
                     print("#########################################################################################")
