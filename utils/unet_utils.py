@@ -182,6 +182,16 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 batch_before_quality_insp = batch_images.shape
 
+                if (epoch == 1 and batch_idx == 5):
+                    print("#########################################################################################")
+                    print(f"\tNumber of images created from each image:\t{batch_before_quality_insp[0]}")
+                    print(f"\tShape of image batch:\t{batch_before_quality_insp}")
+                    print("#########################################################################################")
+
+                #fig, ax = plt.subplots(2)
+                #ax[0]=plt.imshow(batch_images[0].permute(1,2,0))
+                #ax[1]=plt.imshow(batch_images[1].permute(1,2,0))
+
                 a = batch_labels.reshape(batch_labels.shape[0],-1)
 
                 counts = torch.zeros(a.shape[0])
@@ -204,12 +214,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 uique_counts,counts_counts = torch.unique(counts,return_counts = True)
 
                 storage_classes_per_pixel[uique_counts.numpy()] += counts_counts
-            
-                if (epoch == 1 and batch_idx == 5):
-                    print("#########################################################################################")
-                    print(f"\tNumber of images created from each image:\t{batch_before_quality_insp[0]}")
-                    print(f"\tShape of image batch:\t{batch_before_quality_insp}")
-                    print("#########################################################################################")
                     
                 #if batch_idx == 1:
                 #    fig, ax = plt.subplots(2)
@@ -221,7 +225,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 batch_labels = batch_labels[ind]
 
                 #Iterate over all patches in teh current selection in portions of batch_size images
-                for i in range(0, batch_images.size()[0]-1, batch_size):
+                for i in range(0, batch_images.size()[0], batch_size):
                     
                     image = batch_images[i:i+batch_size].to(device)
                     label = batch_labels[i:i+batch_size].long().to(device)
@@ -374,7 +378,7 @@ def validate(model, dataloader, criterion, device, patch_size, batch_size, tag, 
             #batch_images = X[:,:,:patch_size,:patch_size].float().to(device)    #Only Dummy implementation
             #batch_labels = Y[:,0,:patch_size,:patch_size].long().to(device)       #Only Dummy implementation
 
-            for j in range(0, batch_images.size()[0]-1, batch_size):
+            for j in range(0, batch_images.size()[0], batch_size):
 
                 image = batch_images[j:j+batch_size].to(device)
                 label = batch_labels[j:j+batch_size].long().to(device)
