@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn import metrics
 import skimage
 from utils.image_utils import list_scaled_images
+import json
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -65,7 +66,7 @@ class UNet(nn.Module):
         return x
     
 def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,
-          buffer_pick_size, n_epochs, patch_size, batch_size, tag, rotation, mirroring, scaling_factor, use_original,threshold):
+          buffer_pick_size, n_epochs, patch_size, batch_size, tag, rotation, mirroring, scaling_factor, use_original,threshold,config):
     """
     Train a unet model.
 
@@ -88,6 +89,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         scaling_factor:         How much the image should be downscaled in each scaling
         use_original:           Use the original image for training or start with the first downscaled version
         threshold:              number of different classes per patch which is required to keep the patch in the training set
+        config:                 Dict containig all the hyperparameters used to train the model
 
     returns:
         status:         True if the training finishes successfully
@@ -107,6 +109,11 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     os.makedirs(f"results/{tag}/code")
     os.makedirs(f"results/{tag}/data")
     os.makedirs(f"results/{tag}/images")
+
+    #Save the configurations of the training
+    with open(f"results/{tag}/data/config.json","w") as file:
+        json.dump(config,file)
+    file.close()
 
     #Create files to store the training loss and the validation loss
     with open(f"results/{tag}/data/training_loss.txt","w") as file:
