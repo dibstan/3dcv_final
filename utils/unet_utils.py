@@ -155,6 +155,8 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     buffer_images = ImageBuffer(buffer_size=buffer_size,buffer_pick_size=buffer_pick_size,C = dataloader_training.dataset.n_chanels,H = dataloader_training.dataset.height,W = dataloader_training.dataset.width)
     buffer_labels = ImageBuffer(buffer_size=buffer_size,buffer_pick_size=buffer_pick_size,C = 1,H = dataloader_training.dataset.height,W = dataloader_training.dataset.width)
 
+    #Count the total number of patches used to train the network
+    totals = 0
 
 
     #for epoch in tqdm.tqdm(range(1,n_epochs+1)):
@@ -210,9 +212,10 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 #If no patch meets the criterion, use the image with the highest rate of different class labels
                 if mask.sum() == 0:
-                    i_max = torch.argmax(counts)
+                    continue
+                #    i_max = torch.argmax(counts)
 
-                    mask[i_max] = True
+                #    mask[i_max] = True
 
                 batch_images = batch_images[mask]
                 batch_labels = batch_labels[mask]
