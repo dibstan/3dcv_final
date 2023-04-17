@@ -270,7 +270,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     #Another update step was performed
                     withinBatchCounter += 1
                     nTrainIterTotal += 1
-                    print(epoch,withinBatchCounter,nTrainIterTotal)
 
                     #Store the loss
                     storage_training_loss[counter_training_loss][0] = nTrainIterTotal
