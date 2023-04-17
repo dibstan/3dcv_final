@@ -12,8 +12,30 @@ import skimage
 from utils.image_utils import list_scaled_images
 import json
 
+
+def initialize_weights(m):
+  """
+  Initialize the weights of the UNet.
+
+  parameters:
+    m:  Model instance
+
+  returns:
+    None
+  """
+  if isinstance(m, nn.Conv2d):
+      nn.init.xavier_normal_(m.weight.data)
+  elif isinstance(m, nn.ConvTranspose2d):
+      nn.init.xavier_normal_(m.weight.data)
+
+
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
+        """
+        parameters:
+            in_channels:    Number of channels for the input image
+            out_channels:   Number of channels for the output image
+        """
         super(DoubleConv, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
@@ -30,6 +52,12 @@ class DoubleConv(nn.Module):
     
 class UNet(nn.Module):
     def __init__(self, in_channels, out_channels, sizes):
+        """
+        parameters:
+            in_channels:    Number of channels for the input image
+            out_channels:   Number of channels for the output image
+            sizes:          
+        """
         super(UNet, self).__init__()
         self.downs = nn.ModuleList()
         self.ups = nn.ModuleList()
