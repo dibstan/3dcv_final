@@ -1,6 +1,6 @@
-## Final project for the lecture "Computer Vision: 3D Reconstruction"
-# Winter term 2022/23
-# by Konstantin Dibbern, Robin Jansen and Stefan Wahl
+# Final project for the lecture "Computer Vision: 3D Reconstruction"
+ Winter term 2022/23
+ by Konstantin Dibbern, Robin Jansen and Stefan Wahl
 
 The scope of this project is to train a Unet for semantic segmentation of images from the Aerial Semantic Segmentation Drone dataset. for furter information about this data set, please refer to https://www.kaggle.com/datasets/bulentsiyah/semantic-drone-dataset and https://www.tugraz.at/index.php?id=22387. 
 
