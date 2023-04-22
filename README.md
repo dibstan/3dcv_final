@@ -2,5 +2,17 @@
 
 # Getting started:
 
-* copy the folder "semantic_drone_dataset" from the zip folder containing the data set into the root folder of the rep (the folder containing main.ipynb)
-* Run the cells in main.ipynb to create training, test and validation sets
+To run this project, please create a new anaconda environment:
+
+conda create -n FinalProjectEnv python=3.10 anaconda
+
+After that, activate the environment:
+
+conda activate FinalProjectEnv
+
+Clone the repository:
+
+git clone https://github.com/dibstan/3dcv_final.git
+
+
+# Run the Example Notebook

@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 
 class ImageBuffer():
     def __init__(self,buffer_size,buffer_pick_size,C,H,W):

@@ -1,3 +1,4 @@
+#Load dependencies and packages
 import torch
 import torch.nn as nn
 from utils.Buffer import ImageBuffer
@@ -8,10 +9,12 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import metrics
-import skimage
 from utils.image_utils import list_scaled_images
 import json
 
+##############################################################################################################################################
+#Unet Model
+##############################################################################################################################################
 
 def initialize_weights(m):
   """
@@ -92,7 +95,11 @@ class UNet(nn.Module):
         x = nn.Sigmoid()(x)
         
         return x
-    
+
+##############################################################################################################################################
+#Training of a model
+##############################################################################################################################################
+
 def train(model, dataloader_training, dataLoader_validation , optimizer, criterion, device, buffer_size, buffer_update_freq,
           buffer_pick_size, n_epochs, patch_size, batch_size, tag, rotation, mirroring, scaling_factor, use_original,threshold,config):
     """
@@ -110,6 +117,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         buffer_pick_size:       Number of images picked from the buffer in each training iteration
         multiplier:             Number of random variations of each immage picked from the buffer
         patch_size:             Size of the patches used to train the model
+        batch_size:             Batch size
         n_epochs:               Number of epochs
         tag:                    Unique identifier to mark the training run
         rotation:               Use rotation for image augmentation
@@ -120,21 +128,11 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
         config:                 Dict containig all the hyperparameters used to train the model
 
     returns:
-        status:         True if the training finishes successfully
-
-    IMPORTANT:
-
-    Loading images from the storage is expensive (0.5s per image on laptop). Therefore, we proceed as follows:
-    We have a buffer containing at most buffer_size images. After buffer_update_freq training iterations, a new image is taken from the file system
-    and added to the buffer. If the buffer is already full, the oldest image is removed. In each training iteration, we randomly select buffer_pick_size
-    images from the buffer. By applying randomly selected data augmentations we create multiplier patches of size patch_size x patch_size out of 
-    each of the chosen raw images. This avoids loading a new batch in each training iteration but still ensures, that we have at least some variation in the 
-    patches we use to train the model.
+        status:                 True if the training finishes successfully
     """
 
     #Create folders to store the results of the training run
     os.makedirs(f"results/{tag}/state_dicts")
-    os.makedirs(f"results/{tag}/code")
     os.makedirs(f"results/{tag}/data")
     os.makedirs(f"results/{tag}/images")
 
@@ -144,37 +142,38 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     file.close()
 
     #Create files to store the training loss and the validation loss
+
+    #Training objective
     with open(f"results/{tag}/data/training_loss.txt","w") as file:
         file.write("training-loss\n")
     file.close()
 
+    #Number of different classes in the image patches
     with open(f"results/{tag}/data/classes_per_patch.txt","w") as file:
         file.write("classes per patch\n")
     file.close()
 
+    #Objective value on the validation set
     with open(f"results/{tag}/data/validation_loss.txt","w") as file:
         file.write("validation-loss\nTotal Train iter\tepoch\titer in epoch\tvalidation loss\n")
     file.close()
 
+    #F1 Score on the validation set
     with open(f"results/{tag}/data/F1_score.txt","w") as file:
         file.write("F1-score\nTotal Train iter\tepoch\titer in epoch\tvalidation F1-score\n")
     file.close()
 
+    #Accuracy on the validation set
     with open(f"results/{tag}/data/accuracy.txt","w") as file:
         file.write("accuracy\nTotal Train iter\tepoch\titer in epoch\tvalidation accuracy\n")
     file.close()
 
-    #Store the loss
+    #Storage for the objective values
     storage_training_loss = torch.zeros([config["DropLossFreq"],2]).to(device)
     counter_training_loss = 0
 
     #Store how many different classes are contained in each patch
-    storage_classes_per_pixel = torch.zeros(25)
-
-    #For reproducability: Copy all the code files that have been used in the training
-    """
-    TO DO
-    """
+    storage_classes_per_pixel = torch.zeros(config["DropLossFreq"])
 
     #Set the model to training mode
     model.train()
@@ -186,7 +185,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     #Count the total number of training iterations
     nTrainIterTotal = 0
 
-    #for epoch in tqdm.tqdm(range(1,n_epochs+1)):
     for epoch in range(1,n_epochs+1):
         print('Epoch: {} \n'.format(epoch))
 
@@ -204,14 +202,13 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 #sample from the buffers
                 indices = np.random.permutation(min(buffer_images.size,buffer_size))[:buffer_pick_size]
-
                 raw_images_tensor = buffer_images.sample(indices = indices)
                 raw_labels_tensor = buffer_labels.sample(indices = indices)
 
                 batch_images = torch.Tensor()
                 batch_labels = torch.Tensor()
 
-                #Create patches from each of the raw images samplesd from the buffer
+                #Create patches from each of the raw images sampled from the buffer
                 for i, image in enumerate(raw_images_tensor):
                     batch_image = iu.prepare_image_torch(image.permute(1,2,0), patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original)
                     batch_label = iu.prepare_image_torch(raw_labels_tensor[i], patch_size, rotation = rotation, mirroring = mirroring, n=scaling_factor, use_original=use_original)
@@ -227,8 +224,8 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     print(f"\tShape of image batch:\t{batch_before_quality_insp}")
                     print("#########################################################################################")
 
+                #Eliminate patches with a too small number of different classes
                 a = batch_labels.reshape(batch_labels.shape[0],-1)
-
                 counts = torch.zeros(a.shape[0])
 
                 for ri in range(a.shape[0]):
@@ -245,9 +242,9 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
 
                 #Save the recorded counts
                 uique_counts,counts_counts = torch.unique(counts,return_counts = True)
-
                 storage_classes_per_pixel[uique_counts.numpy()] += counts_counts
-                    
+                
+                #Suhuffle the batch
                 ind = torch.randperm(batch_images.size()[0])
                 batch_images = batch_images[ind]
                 batch_labels = batch_labels[ind]
@@ -261,8 +258,10 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     #Get prediction from the model
                     prdictions = model(image)
 
+                    #Compute the objective function
                     loss = criterion(inputs = prdictions,targets = label)
 
+                    #Optimize the loss with respect to the model parameters
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
@@ -292,7 +291,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                 evaluator(config = config,epoch = epoch,model = model,tag = tag,dataloader = dataLoader_validation,withinBatchCounter = withinBatchCounter,criterion = criterion,device = device,nTrainIterTotal = nTrainIterTotal)
                 model.train()
 
-        #Perform a full evaluation at the end of each epoch
+        #Perform a full evaluation at the end of each epoch and store the current state of the model
         model.eval()
         torch.save(model.state_dict(),f"results/{tag}/state_dicts/state_dict_epoch-{epoch}.pt")
         evaluator(config = config,epoch = epoch,model = model,tag = tag,dataloader = dataLoader_validation,withinBatchCounter = -1,criterion = criterion,device = device,nTrainIterTotal = nTrainIterTotal)
@@ -318,8 +317,28 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     status = True
     return status
 
+##############################################################################################################################################
+#Evaluation of the model during the training
+##############################################################################################################################################
+
 def evaluator(config,epoch,model,tag,dataloader,withinBatchCounter,criterion,device,nTrainIterTotal):
-        #Get the validation loss of the model
+        """
+        Parameters:
+            config:                 Dictionary containing the hyperparameters of the training
+            epoch:                  Current training epoch
+            model:                  Model which is evaluated
+            tag:                    Tag to identify the training run
+            dataloader:             Dataloader containing the validation samples
+            withinBatchCounter:     Number of update steps in the current epoch
+            criterion:              Function to compute the loss which is optimized during the training
+            device:                 Device on which the training runs 
+            nTrainIterTotal:        Total number of training iterations
+        
+        returns: 
+            None
+        """
+
+        #Evaluate the performance of the model on the validation set
         total_val_loss, f1_score, acc_score = validate(
             model = model, 
             dataloader = dataloader, 
@@ -352,8 +371,11 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
         ground_truth:       Tensor of shape (H,W) containing the true labels
         prediction:         Tensor of shape (C,H,W) containing the predicted logits
         image:              Raw image
-        image_folder:       path to folder where teh images a<re stored
+        image_folder:       Path to folder where the images are stored
         fs:                 Fontsize for labeling
+
+    returns:
+        None
     """
     
     #Get the probabilities of the individual classes
@@ -362,16 +384,18 @@ def visualizer(ground_truth,prediction,image,image_folder,fs = 30):
     #Get the Maximum a posterioiri labels
     pred_hard_decision = torch.argmax(class_probs_per_pixel,dim = 0)
 
-    #Plot the hard decision
+    #Plot the image
     fig,axs = plt.subplots(1,3,figsize = (30,8))
     axs[0].imshow(image.permute(1,2,0).detach().numpy(),vmin = 1,vmax = 25)
     axs[0].axis("off")
     axs[0].set_title("Image",fontsize = fs)
 
+    #Plot the Ground truth labeling
     axs[1].imshow(ground_truth.detach().numpy(),vmin = 1,vmax = 25)
     axs[1].axis("off")
     axs[1].set_title("Ground truth class labels",fontsize = fs)
 
+    #Plot the MAP prediction of the model
     axs[2].imshow(pred_hard_decision.detach().numpy(),vmin = 1,vmax = 25)
     axs[2].axis("off")
     axs[2].set_title("MAP labels",fontsize = fs)
@@ -399,19 +423,26 @@ def validate(model, dataloader, criterion, device, patch_size, batch_size, tag, 
     Compute the total loss of the model on the validation set
 
     parameters:
-        model:          Model which is evaluated
-        dataLoader:     Dataloader used to extract validation data from the file system
-        criterion:      Criterion used to measure the discrepancy between the ground truth and the prediction
-        device:         Device on which the evaluation runs
-        patch_size:     Size of the image patches which are passed through the model
-        scaling_factor: How much the image should be downscaled in each scaling
-        use_original:   Use the original image for training or start with the first downscaled version
-        withinBatchCounter:      Number of iterations in the current batch
+        model:                  Model which is evaluated
+        dataLoader:             Dataloader used to extract validation data from the file system
+        criterion:              Criterion used to measure the discrepancy between the ground truth and the prediction
+        device:                 Device on which the evaluation runs
+        patch_size:             Size of the image patches which are passed through the model
+        batch_size:             Batch size 
+        tag:                    Tag to identify the training run
+        epoch:                  Current training epoch
+        scaling_factor:         How much the image should be downscaled in each scaling
+        use_original:           Use the original image for training or start with the first downscaled version
+        withinBatchCounter:     Number of iterations in the current epoch
 
     returns:   
-        total_loss:  Total loss of the model on the validation set
+        total_loss:             Total loss of the model on the validation set
+        f1_score:               F1 score on the validation set    
+        acc_score               Accuracy on the validation set
     
     """
+
+    #Initialize the performance measures
     total_loss = 0
     f1_score = 0
     acc_score = 0
@@ -420,21 +451,30 @@ def validate(model, dataloader, criterion, device, patch_size, batch_size, tag, 
     with torch.no_grad():
         for i,(X,Y) in enumerate(dataloader):
 
+            #Select patches from the images
             batch_images = iu.prepare_image_torch(X[0].permute(1,2,0), patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).float().to(device)
             batch_labels = iu.prepare_image_torch(Y[0][0], patch_size, rotation = False, mirroring = False, n=scaling_factor, use_original=use_original).long().to(device)
-
+            
+            #Evaluate the images in the current batch in small slices
             for j in range(0, batch_images.size()[0], batch_size):
-
+                
+                #Select the sub-batch
                 image = batch_images[j:j+batch_size].to(device)
                 label = batch_labels[j:j+batch_size].long().to(device)
+
+                #Get the prediction
                 prediction = model(image)
 
+                #Get the MAP prediction from the model output
+                Y_pred = torch.argmax(prediction, dim=1).cpu().numpy()
+
+                #Compute objective value
                 loss = criterion(inputs = prediction,targets = label)
-                total_loss += loss.item() * X.shape[0]
+                total_loss += loss.item()
 
                 #Quantities to calculate F1 and accuracy
                 y_true = label.cpu().numpy().flatten()
-                y_pred = torch.argmax(prediction, dim=1).cpu().numpy().flatten()
+                y_pred = Y_pred.flatten()
 
                 #Calculate this batches F1 score
                 f1 = metrics.f1_score(y_true = y_true, y_pred = y_pred, average = 'weighted')
@@ -444,15 +484,18 @@ def validate(model, dataloader, criterion, device, patch_size, batch_size, tag, 
                 acc = metrics.accuracy_score(y_true = y_true, y_pred = y_pred,)
                 acc_score += acc
 
-                counter += 1
+                #Increase the counter which is used for normalization
+                counter += 1    
 
-            #visualization
+            #Visualize the results
             if i%10 == 0:
                 path = f"results/{tag}/images/Visualization_epoch-{epoch}_iter-{withinBatchCounter}/"
                 os.makedirs(path)
                 visualizer(ground_truth = label[0].detach().cpu(),prediction = prediction[0].detach().cpu(),image = image[0].detach().cpu(),image_folder = path,fs = 30)
 
-    f1_score = f1_score/(counter)
-    acc_score = acc_score/(counter)    
+    #Normalize the properties
+    total_loss = total_loss / counter
+    f1_score = f1_score/counter
+    acc_score = acc_score/counter  
 
     return total_loss, f1_score, acc_score
