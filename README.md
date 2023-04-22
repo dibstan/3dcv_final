@@ -4,7 +4,9 @@
 
 To run this project, please create a new anaconda environment:
 
+---bash
 conda create -n FinalProjectEnv python=3.10 anaconda
+---
 
 After that, activate the environment:
 
