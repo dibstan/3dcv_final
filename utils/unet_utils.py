@@ -216,14 +216,6 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
                     batch_labels = torch.cat([batch_labels, batch_label])
                     batch_images = torch.cat([batch_images, batch_image])
 
-                batch_before_quality_insp = batch_images.shape
-
-                if (epoch == 1 and batch_idx == 5):
-                    print("#########################################################################################")
-                    print(f"\tNumber of images created from each image:\t{batch_before_quality_insp[0]}")
-                    print(f"\tShape of image batch:\t{batch_before_quality_insp}")
-                    print("#########################################################################################")
-
                 #Eliminate patches with a too small number of different classes
                 a = batch_labels.reshape(batch_labels.shape[0],-1)
                 counts = torch.zeros(a.shape[0])
