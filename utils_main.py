@@ -74,3 +74,5 @@ def plotter_loss(tag):
     f1validation = np.loadtxt(f"results/{tag}/data/accuracy.txt",skiprows=2)
     axs[2].plot(f1validation[:,0],f1validation[:,3],color = "k",marker = "o")
     plt.tight_layout()
+
+    return validationLoss
