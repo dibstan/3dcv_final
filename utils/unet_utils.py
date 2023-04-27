@@ -173,7 +173,7 @@ def train(model, dataloader_training, dataLoader_validation , optimizer, criteri
     counter_training_loss = 0
 
     #Store how many different classes are contained in each patch
-    storage_classes_per_pixel = torch.zeros(config["DropLossFreq"])
+    storage_classes_per_pixel = torch.zeros(25)
 
     #Set the model to training mode
     model.train()
