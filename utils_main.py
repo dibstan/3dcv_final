@@ -51,10 +51,9 @@ class pseudoClf():
 #functions for visualization
 ######################################################################################################################
 
-fs_labels = 20
-fs_titles = 30
+fs_labels = 35
+fs_titles = 45
 fontdict_labels = {"fontsize":fs_labels}
-fs_labels = 20
 fontdict_titles = {"fontsize":fs_titles}
 
 def plotter_testSet(indices_to_eval,model,DS_test,config,device):
@@ -141,11 +140,11 @@ def plotter_loss(tag):
     axs[2].set_ylabel("accuracy",fontdict=fontdict_labels)
     axs[2].tick_params(axis='both', which='major', labelsize=fs_labels)
 
-    f1validation = np.loadtxt(f"results/{tag}/data/accuracy.txt",skiprows=2)
-    axs[2].plot(f1validation[:,0],f1validation[:,3],color = "k",marker = "o")
+    accvalidation = np.loadtxt(f"results/{tag}/data/accuracy.txt",skiprows=2)
+    axs[2].plot(accvalidation[:,0],accvalidation[:,3],color = "k",marker = "o")
     plt.tight_layout()
 
-    return validationLoss
+    return accvalidation
 
 def eval_prior(DS_training):
     class_counts = np.zeros(24)
@@ -176,7 +175,6 @@ def eval_prior(DS_training):
     axs[0].set_ylabel("p(Class)",fontdict=fontdict_labels)
     axs[0].tick_params(axis='both', which='major', labelsize=fs_labels)
     axs[0].bar(x = np.arange(0,24),height=prior,width=1,color = "k")
-    axs[0].legend(fontsize = fs_labels)
 
     axs[1].set_title(f"Cumulative prior distribution of the pixel values",fontdict=fontdict_titles)
     axs[1].set_xticks(ticks = np.arange(len(class_names)))
@@ -185,7 +183,8 @@ def eval_prior(DS_training):
     axs[1].set_ylabel("Cumulative(p(Class))",fontdict=fontdict_labels)
     axs[1].tick_params(axis='both', which='major', labelsize=fs_labels)
     axs[1].bar(x = np.arange(0,24),height=np.cumsum(prior),width=1,color = "k")
-    axs[1].legend(fontsize = fs_labels)
+
+    plt.tight_layout()
 
     return prior
 
