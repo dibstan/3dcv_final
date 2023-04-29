@@ -51,7 +51,7 @@ class pseudoClf():
 #functions for visualization
 ######################################################################################################################
 
-fs_labels = 35
+fs_labels = 25
 fs_titles = 45
 fontdict_labels = {"fontsize":fs_labels}
 fontdict_titles = {"fontsize":fs_titles}
