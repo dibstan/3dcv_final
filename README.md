@@ -29,7 +29,7 @@ pip install -r ./requirements.txt
 
 # Run the Example Notebook
 
-We provide a jupyter notebook which allows you to train and evaluate a UNet for the segmentation of drone images. To run this notebook, open the jupyter notebook server and open the notebook. Please follow the instructions in the notebook to prepare the data set and to train the model.
+We provide a jupyter notebook which allows you to train and evaluate a UNet for the segmentation of drone images. To run this notebook, start the jupyter notebook server and open the notebook "main.ipynb". Please follow the instructions in the notebook to prepare the data set and to train the model.
 
 ```bash
 jupyter notebook
